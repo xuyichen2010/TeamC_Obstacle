@@ -105,7 +105,6 @@ void cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& msg) {
   ROS_INFO("  y: %f\n", cmd_vel.linear.y);
   ROS_INFO("Angular:\n");
   ROS_INFO("  z: %f\n", cmd_vel.angular.z);
-  ROS_INFO("\n");
 }
 
 
