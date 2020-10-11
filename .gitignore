@@ -1,4 +1,6 @@
 devel_isolated/*
 build_isolated/*
+devel/*
+build/*
 .catkin_tools/*
 logs/*

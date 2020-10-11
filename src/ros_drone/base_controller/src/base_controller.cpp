@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
     ROS_INFO("Take off successful!");
   }
 
-  ros::Rate r(30.0);
+  ros::Rate r(20.0);
   while(nh.ok()){
     ros::spinOnce();
 
