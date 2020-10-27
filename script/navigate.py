@@ -29,11 +29,8 @@ class NavTest():
         # 如果想要获得某一点的坐标，在rviz中点击 2D Nav Goal 按键，然后单机地图中一点
         # 在终端中就会看到坐标信息
         locations = []
-        locations.append(Pose(Point(0, 2, 0), Quaternion(0.000, 0.000, 0.704, 0.71)))
-        locations.append(Pose(Point(0, 10, 0), Quaternion(0.000, 0.000, 0.704, 0.71)))
-        locations.append(Pose(Point(-0.1, 16, 0.000), Quaternion(0.000, 0.000, 0.704, 0.71)))
-        locations.append(Pose(Point(0, 21, 0.000), Quaternion(0.000, 0.000, 0.704, 0.71)))
-        locations.append(Pose(Point(0, 30, 0.000), Quaternion(0.000, 0.000, 0.704, 0.71)))
+        locations.append(Pose(Point(0, 5, 0), Quaternion(0.000, 0.000, 0.704, 0.71)))
+        locations.append(Pose(Point(0, 0, 0), Quaternion(0.000, 0.000, 0.704, 0.71)))
 
         # 发布控制机器人的消息
         self.cmd_vel_pub = rospy.Publisher('cmd_vel', Twist, queue_size=5)
@@ -72,7 +69,7 @@ class NavTest():
         while not rospy.is_shutdown():
             # 如果已经走完了所有点，再重新开始排序
             sequence = locations
-            if i == 1:
+            if i == 2:
                 rospy.loginfo("Finished!.")
                 self.reach_goal_pub.publish(True)
                 self.shutdown()
