@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
   ros::Subscriber localPosition = nh.subscribe("dji_sdk/local_position", 100, &local_position_callback);
 
   //Publishers
-  ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 100);
+  ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("uav/odom", 100);
   tf::TransformBroadcaster odom_broadcaster;
 
   ros::Time current_time, last_time;
@@ -45,8 +45,8 @@ int main(int argc, char** argv) {
     //first, we'll publish the transform over tf
     geometry_msgs::TransformStamped odom_trans;
     odom_trans.header.stamp = current_time;
-    odom_trans.header.frame_id = "odom";
-    odom_trans.child_frame_id = "base_stabilized";
+    odom_trans.header.frame_id = "uav_odom";
+    odom_trans.child_frame_id = "uav_base_stabilized";
 
     odom_trans.transform.translation.x = local_position.point.x;
     odom_trans.transform.translation.y = local_position.point.y;
@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
     //next, we'll publish the odometry message over ROS
     nav_msgs::Odometry odom;
     odom.header.stamp = current_time;
-    odom.header.frame_id = "odom";
+    odom.header.frame_id = "uav_odom";
 
     //set the position
     odom.pose.pose.position.x = local_position.point.x;
@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
     odom.pose.pose.orientation = odom_quat;
 
     //set the velocity
-    odom.child_frame_id = "base_stabilized";
+    odom.child_frame_id = "uav_base_stabilized";
     odom.twist.twist.linear.x = current_velocity.vector.x;
     odom.twist.twist.linear.y = current_velocity.vector.y;
     odom.twist.twist.angular.z = current_imu.angular_velocity.z;

@@ -3,11 +3,13 @@
 
 import roslib;
 import rospy
+import math
 import actionlib
 from actionlib_msgs.msg import *
 from geometry_msgs.msg import Pose, PoseWithCovarianceStamped, Point, Quaternion, Twist
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 import std_msgs.msg
+from sensor_msgs.msg import NavSatFix
 from random import sample
 from math import pow, sqrt
 
@@ -18,6 +20,8 @@ class NavTest():
 
         # 在每个目标位置暂停的时间
         self.rest_time = rospy.get_param("~rest_time", 2)
+        self.ugv_ready = False
+        self.origin = None
 
         # 到达目标的状态
         goal_states = ['PENDING', 'ACTIVE', 'PREEMPTED',
@@ -29,15 +33,18 @@ class NavTest():
         # 如果想要获得某一点的坐标，在rviz中点击 2D Nav Goal 按键，然后单机地图中一点
         # 在终端中就会看到坐标信息
         locations = []
-        locations.append(Pose(Point(0, 5, 0), Quaternion(0.000, 0.000, 0.704, 0.71)))
+        locations.append(Pose(Point(0, 2, 0), Quaternion(0.000, 0.000, 0.704, 0.71)))
         locations.append(Pose(Point(0, 0, 0), Quaternion(0.000, 0.000, 0.704, 0.71)))
 
         # 发布控制机器人的消息
-        self.cmd_vel_pub = rospy.Publisher('cmd_vel', Twist, queue_size=5)
+        self.cmd_vel_pub = rospy.Publisher('uav/cmd_vel', Twist, queue_size=5)
         self.reach_goal_pub = rospy.Publisher('/dji_landing/landing_enable', std_msgs.msg.Bool, queue_size=5)
 
+        rospy.Subscriber("ugv/gps_position", NavSatFix, self.ugv_gps_callback)
+        rospy.Subscriber("dji_sdk/gps_position", NavSatFix, self.uav_gps_callback)
+
         # 订阅move_base服务器的消息
-        self.move_base = actionlib.SimpleActionClient("move_base", MoveBaseAction)
+        self.move_base = actionlib.SimpleActionClient("uav/move_base", MoveBaseAction)
 
         rospy.loginfo("Waiting for move_base action server...")
 
@@ -70,7 +77,12 @@ class NavTest():
             # 如果已经走完了所有点，再重新开始排序
             sequence = locations
             if i == 2:
-                rospy.loginfo("Finished!.")
+                rospy.loginfo("Finished all pre-defined waypoints!.")
+		while not self.ugv_ready:
+                    rospy.loginfo("Waiting for UGV to finish")
+		    rospy.sleep(self.rest_time)
+                locations.append(Pose(Point(self.local_x, self.local_y, 0), Quaternion(0.000, 0.000, 0.704, 0.71)))
+            if i == 3:
                 self.reach_goal_pub.publish(True)
                 self.shutdown()
                 quit()
@@ -103,7 +115,7 @@ class NavTest():
             # 设定下一个目标点
             self.goal = MoveBaseGoal()
             self.goal.target_pose.pose = locations[location]
-            self.goal.target_pose.header.frame_id = 'odom'
+            self.goal.target_pose.header.frame_id = 'uav_odom'
             self.goal.target_pose.header.stamp = rospy.Time.now()
 
             # 让用户知道下一个位置
@@ -142,6 +154,27 @@ class NavTest():
                           " min Distance: " + str(trunc(distance_traveled, 1)) + " m")
 
             rospy.sleep(self.rest_time)
+    
+    def ugv_gps_callback(self, data):
+    	rospy.loginfo("UGV GPs: " + str(data.latitude) + " " + str(data.longitude))
+	self.local_x, self.local_y = self.gps_to_local(data, self.origin)
+     	if data.latitude != 0:
+            self.ugv_ready = True
+
+    def uav_gps_callback(self, data):
+    	#rospy.loginfo("UAV GPs: " + str(data.latitude) + " " + str(data.longitude))
+        if self.origin:
+	    return
+        self.origin = data
+        rospy.loginfo("Origin set: " + str(self.origin.latitude) + " " + str(self.origin.longitude))
+
+    def gps_to_local(self, target, origin):
+	deltaLon = target.longitude - origin.longitude
+	deltaLat = target.latitude - origin.latitude
+	x = deltaLat * 6378137.0
+	y = deltaLon * 6378137.0 * math.cos(target.latitude)
+        rospy.loginfo("Local Goals: " + str(x) + " " + str(y))
+	return x, y
 
     def update_initial_pose(self, initial_pose):
         self.initial_pose = initial_pose

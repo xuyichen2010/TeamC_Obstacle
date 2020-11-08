@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
 
   ros::Subscriber flightStatusSub = nh.subscribe("dji_sdk/flight_status", 10, &flight_status_callback);
   ros::Subscriber gpsSub          = nh.subscribe("dji_sdk/gps_position", 10, &gps_position_callback);
-  ros::Subscriber cmdVelSub       = nh.subscribe("cmd_vel", 10, &cmd_vel_callback);
+  ros::Subscriber cmdVelSub       = nh.subscribe("uav/cmd_vel", 10, &cmd_vel_callback);
   ros::Subscriber imu_subscriber = nh.subscribe("dji_sdk/imu", 100, imuMsgCallback);
 
   // Basic services
@@ -75,9 +75,14 @@ int main(int argc, char** argv) {
   }
 
   ros::Rate r(20.0);
+  int count = 0;
+  int z_vel = 0.3;
   while(nh.ok()){
     ros::spinOnce();
-
+    if (count >= 10000){
+    	z_vel = 0;
+    }
+    count++;
     sensor_msgs::Joy controlVelYaw;
     double x_cmd = cmd_vel.linear.x * cos(yaw) - cmd_vel.linear.y * sin(yaw);
     double y_cmd = cmd_vel.linear.x * sin(yaw) + cmd_vel.linear.y * cos(yaw);

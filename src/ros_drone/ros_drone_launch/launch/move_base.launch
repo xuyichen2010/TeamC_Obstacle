@@ -1,5 +1,5 @@
 <launch>
-
+  <group ns="uav">
    <master auto="start"/>
 
    
@@ -13,6 +13,8 @@
     <rosparam file="$(find ros_drone_launch)/config/local_costmap_params.yaml" command="load" />
     <rosparam file="$(find ros_drone_launch)/config/global_costmap_params.yaml" command="load" />
     <rosparam file="$(find ros_drone_launch)/config/base_local_planner_params.yaml" command="load" />
+    <remap from="/scan" to="/uav/scan"/>
+    <!-- <remap from="/scan" to="/dji/laser/scan"/> -->
     </node>
-
+</group>
 </launch>
