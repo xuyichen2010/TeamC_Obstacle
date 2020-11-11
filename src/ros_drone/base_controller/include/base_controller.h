@@ -14,13 +14,14 @@
 #include <sensor_msgs/Joy.h>
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/NavSatFix.h>
+#include <std_msgs/Bool.h>
 //DJI SDK includes
 #include <dji_sdk/DroneTaskControl.h>
 #include <dji_sdk/SDKControlAuthority.h>
 #include <dji_sdk/QueryDroneVersion.h>
 
 
-
+void starterEnableCallback(const std_msgs::Bool& starter_enable_msg);
 
 bool set_local_position();
 

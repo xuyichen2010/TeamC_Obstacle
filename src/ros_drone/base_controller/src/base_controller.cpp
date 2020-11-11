@@ -22,6 +22,7 @@ ros::Publisher ctrlVelYawPub;
 // global variables for subscribed topics
 uint8_t flight_status = 255;
 uint8_t current_gps_health = 0;
+bool starter_enabled = false;
 geometry_msgs::Twist cmd_vel;
 sensor_msgs::NavSatFix current_gps_position;
 
@@ -49,6 +50,7 @@ int main(int argc, char** argv) {
   ros::Subscriber gpsSub          = nh.subscribe("dji_sdk/gps_position", 10, &gps_position_callback);
   ros::Subscriber cmdVelSub       = nh.subscribe("uav/cmd_vel", 10, &cmd_vel_callback);
   ros::Subscriber imu_subscriber = nh.subscribe("dji_sdk/imu", 100, imuMsgCallback);
+  ros::Subscriber starter_enable_sub = nh.subscribe("dji_landing/starter_enable", 1, starterEnableCallback );
 
   // Basic services
   query_version_service      = nh.serviceClient<dji_sdk::QueryDroneVersion>("dji_sdk/query_drone_version");
@@ -75,14 +77,11 @@ int main(int argc, char** argv) {
   }
 
   ros::Rate r(20.0);
-  int count = 0;
-  int z_vel = 0.3;
   while(nh.ok()){
     ros::spinOnce();
-    if (count >= 10000){
-    	z_vel = 0;
+    if (starter_enabled){
+        break;
     }
-    count++;
     sensor_msgs::Joy controlVelYaw;
     double x_cmd = cmd_vel.linear.x * cos(yaw) - cmd_vel.linear.y * sin(yaw);
     double y_cmd = cmd_vel.linear.x * sin(yaw) + cmd_vel.linear.y * cos(yaw);
@@ -99,6 +98,11 @@ int main(int argc, char** argv) {
     r.sleep();
   }
   return 0;
+}
+
+
+void starterEnableCallback(const std_msgs::Bool& starter_enable_msg){
+    starter_enabled = starter_enable_msg.data;
 }
 
 

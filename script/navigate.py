@@ -23,6 +23,7 @@ class NavTest():
         self.ugv_ready = False
         self.origin = None
 
+
         # 到达目标的状态
         goal_states = ['PENDING', 'ACTIVE', 'PREEMPTED',
                        'SUCCEEDED', 'ABORTED', 'REJECTED',
@@ -33,15 +34,17 @@ class NavTest():
         # 如果想要获得某一点的坐标，在rviz中点击 2D Nav Goal 按键，然后单机地图中一点
         # 在终端中就会看到坐标信息
         locations = []
-        locations.append(Pose(Point(0, 2, 0), Quaternion(0.000, 0.000, 0.704, 0.71)))
         locations.append(Pose(Point(0, 0, 0), Quaternion(0.000, 0.000, 0.704, 0.71)))
+        #locations.append(Pose(Point(0, 0, 0), Quaternion(0.000, 0.000, 0.704, 0.71)))
 
         # 发布控制机器人的消息
         self.cmd_vel_pub = rospy.Publisher('uav/cmd_vel', Twist, queue_size=5)
-        self.reach_goal_pub = rospy.Publisher('/dji_landing/landing_enable', std_msgs.msg.Bool, queue_size=5)
+        self.reach_goal_pub = rospy.Publisher('/dji_landing/starter_enable', std_msgs.msg.Bool, queue_size=5)
+        self.goal_local_pub = rospy.Publisher('/dji_landing/landing_coord', Point, queue_size=5)
 
-        rospy.Subscriber("ugv/gps_position", NavSatFix, self.ugv_gps_callback)
+        rospy.Subscriber("navsat/upgrade/fix", NavSatFix, self.ugv_gps_callback)
         rospy.Subscriber("dji_sdk/gps_position", NavSatFix, self.uav_gps_callback)
+        rospy.Subscriber("landing_point_found", std_msgs.msg.Bool, self.landing_found_callback)
 
         # 订阅move_base服务器的消息
         self.move_base = actionlib.SimpleActionClient("uav/move_base", MoveBaseAction)
@@ -76,15 +79,17 @@ class NavTest():
         while not rospy.is_shutdown():
             # 如果已经走完了所有点，再重新开始排序
             sequence = locations
-            if i == 2:
+            if i == 1:
                 rospy.loginfo("Finished all pre-defined waypoints!.")
+                
 		while not self.ugv_ready:
                     rospy.loginfo("Waiting for UGV to finish")
 		    rospy.sleep(self.rest_time)
                 locations.append(Pose(Point(self.local_x, self.local_y, 0), Quaternion(0.000, 0.000, 0.704, 0.71)))
-            if i == 3:
+            while i == 2:
                 self.reach_goal_pub.publish(True)
-                self.shutdown()
+                self.goal_local_pub.publish(Point(self.local_x, self.local_y, 0))
+                #self.shutdown()
                 quit()
 
             # 在当前的排序中获取下一个目标点
@@ -123,9 +128,8 @@ class NavTest():
 
             # 向下一个位置进发
             self.move_base.send_goal(self.goal)
-
             # 五分钟时间限制
-            finished_within_time = self.move_base.wait_for_result(rospy.Duration(50))
+            finished_within_time = self.move_base.wait_for_result(rospy.Duration(150))
 
             # 查看是否成功到达
             if not finished_within_time:
@@ -154,16 +158,21 @@ class NavTest():
                           " min Distance: " + str(trunc(distance_traveled, 1)) + " m")
 
             rospy.sleep(self.rest_time)
+
+    def DEG2RAD(self, degree):
+        return (degree) * ((3.141592653589793) / (180.0))
+
+    def landing_found_callback(self, msg):
+        self.ugv_ready = msg.data
+        
     
     def ugv_gps_callback(self, data):
     	rospy.loginfo("UGV GPs: " + str(data.latitude) + " " + str(data.longitude))
 	self.local_x, self.local_y = self.gps_to_local(data, self.origin)
-     	if data.latitude != 0:
-            self.ugv_ready = True
 
     def uav_gps_callback(self, data):
     	#rospy.loginfo("UAV GPs: " + str(data.latitude) + " " + str(data.longitude))
-        if self.origin:
+        if self.origin or data.latitude == 0 or data.longitude == 0.0:
 	    return
         self.origin = data
         rospy.loginfo("Origin set: " + str(self.origin.latitude) + " " + str(self.origin.longitude))
@@ -171,8 +180,8 @@ class NavTest():
     def gps_to_local(self, target, origin):
 	deltaLon = target.longitude - origin.longitude
 	deltaLat = target.latitude - origin.latitude
-	x = deltaLat * 6378137.0
-	y = deltaLon * 6378137.0 * math.cos(target.latitude)
+	y = self.DEG2RAD(deltaLat) * 6378137.0
+	x = self.DEG2RAD(deltaLon) * 6378137.0 * math.cos(self.DEG2RAD(target.latitude))
         rospy.loginfo("Local Goals: " + str(x) + " " + str(y))
 	return x, y
 
